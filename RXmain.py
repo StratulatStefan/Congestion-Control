@@ -6,6 +6,8 @@ buffer_size = 1024  # pachetul va contine 512B
 
 sock.bind(address_port)
 
+file_name ="default.txt"
+file_write = open(file_name, 'wb')
 
 while True:
     data, addr = sock.recvfrom(buffer_size)
