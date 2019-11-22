@@ -38,7 +38,7 @@ def encode_end(segment_data):
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x03'
     segment_data_len = len(segment_data)
-    segment_data += segment_data * (DEFAULT_SIZE - segment_data_len)
+    segment_data += segment_data + "0"*(DEFAULT_SIZE - segment_data_len)
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
     segment = segment_number + segment_type + segment_len + segment_data
     return segment
