@@ -1,4 +1,4 @@
-DEFAULT_SIZE = 4
+DEFAULT_SIZE = 512
 ack = 0 # ack == 1
 
 def DataFieldDecode(data,length):
@@ -31,12 +31,10 @@ def encode_data(segment_data):
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x02'
     segment_data_len = len(segment_data)
-    segment_data = DataFieldDecode(segment_data,segment_data_len) + '0'*(DEFAULT_SIZE - segment_data_len)
+    segment_data = segment_data + b'\x00'*(DEFAULT_SIZE - segment_data_len)
     segment_data_len = DEFAULT_SIZE
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
-    segment = segment_number + segment_type + segment_len
-    for ch in segment_data:
-        segment += (ord(ch).to_bytes(1,byteorder='big',signed=False))
+    segment = segment_number + segment_type + segment_len + segment_data
     return segment
 
 
@@ -47,11 +45,10 @@ def encode_end(segment_data):
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x03'
     segment_data_len = len(segment_data)
-    segment_data = segment_data + '0'*(DEFAULT_SIZE - segment_data_len)
+    segment_data = segment_data + b'\x00'*(DEFAULT_SIZE - segment_data_len)
+    segment_data_len = DEFAULT_SIZE
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
-    segment = segment_number + segment_type + segment_len
-    for ch in segment_data:
-        segment += (ord(ch).to_bytes(1,byteorder='big',signed=False))
+    segment = segment_number + segment_type + segment_len + segment_data
     return segment
 
 
@@ -87,5 +84,4 @@ def encode_bytes(filename):
         if len(b) == DEFAULT_SIZE:
             yield encode('DATA', b)
         else:
-            i = 0
-            yield encode('DATA', b)
+            yield encode('END', b)

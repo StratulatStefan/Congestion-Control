@@ -1,7 +1,8 @@
 import socket
 import time
-from RXfun import *
+import struct
 
+from RXfun import *
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # ipv4, UDP
 address_port = ("127.0.0.1", 5005)
@@ -9,8 +10,12 @@ buffer_size = 1024  # pachetul va contine 512B
 
 sock.bind(address_port)
 
+sock.setsockopt(
+    socket.SOL_SOCKET,
+    socket.SO_RCVBUF,
+    64000 * 16)
 
-
+i = 0
 print('Incepem bucla de receptie..')
 time.sleep(2)
 while True:
@@ -25,11 +30,13 @@ while True:
         file_write = open(file_name,'wb')
         print('Fisierul a fost creat cu succes..')
     elif decoded_data['tip'] == 2:
-        print('A fost receptionat un pachet de date...')
+        #print('A fost receptionat un pachet de date...')
         file_write.write(decoded_data['data'])
-        print('Fisierul a fost modificat')
+        #print('Fisierul a fost modificat')
+        i = i + 1
+        print(i)
     elif decoded_data['tip'] == 3:
-        time.sleep(2)
+        time.sleep(1)
         print('\n\nReceptia a luat sfarsit deoarece a fost transmit pachetul final...')
         time.sleep(2)
         file_write.write(decoded_data['data'])
