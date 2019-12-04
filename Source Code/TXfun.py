@@ -1,9 +1,6 @@
 DEFAULT_SIZE = 1
-ack = 11
+ack = 0 # ack == 1
 
-
-# a = int.from_bytes(segment_number, byteorder='big', signed=False)
-# print(a)
 
 def incrementAck():
     global ack
@@ -14,9 +11,11 @@ def encode_start(segment_data):
     incrementAck()
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x01'
-    segment_data_len = len(segment_data)
+    segment_data_len = len(segment_data)  # atentie la caracterele speciale :  de ex 10 = CRLF
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
-    segment = segment_number + segment_type + segment_len + segment_data  # impachetarea efectiva
+    segment = segment_number + segment_type + segment_len
+    for ch in segment_data:
+        segment += (ord(ch).to_bytes(1,byteorder='big',signed=False))
     return segment
 
 
@@ -38,9 +37,11 @@ def encode_end(segment_data):
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x03'
     segment_data_len = len(segment_data)
-    segment_data += segment_data + "0"*(DEFAULT_SIZE - segment_data_len)
+    segment_data = segment_data + "0"*(DEFAULT_SIZE - segment_data_len)
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
-    segment = segment_number + segment_type + segment_len + segment_data
+    segment = segment_number + segment_type + segment_len
+    for ch in segment_data:
+        segment += (ord(ch).to_bytes(1,byteorder='big',signed=False))
     return segment
 
 
@@ -49,10 +50,10 @@ def encode_error(segment_data):
 
 
 segment_type = {
-        'START': encode_start,
-        'DATA': encode_data,
-        'END': encode_end
-    }
+    'START': encode_start,
+    'DATA': encode_data,
+    'END': encode_end
+}
 
 
 def encode(tip, data):
