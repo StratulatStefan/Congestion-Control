@@ -8,30 +8,27 @@ address_port = ("127.0.0.1", 5005)
 file_name_to_send = "file.txt"
 
 
-#encode_start(b'\x14\xff')
 
+print('Incepem bucla de transmisie...')
+time.sleep(2)
 
+print('Trimitem pachetul de start...')
+time.sleep(1)
 segment = encode('START', file_name_to_send)
 sock.sendto(segment, address_port)
 
-
-segment = encode('END','mama')
-sock.sendto(segment, address_port)
+'''
 
 '''
-for segment in bytes_from_file(file_name_to_send):
-    print(segment)
 
 
 for segment in encode_bytes(file_name_to_send):
-    pass
-    print(segment)
     sock.sendto(segment, address_port)
-sock.sendto(b'',address_port)'''
-# sock.sendto(("Mesaj trimis").encode("UTF-8"), address_port)
 
+print('Trimitem pachetul de stop...')
+time.sleep(1)
+segment = encode('END','')
+sock.sendto(segment, address_port)
 
-
-
-
-a = input('asd')
+print('Gta...')
+a = input('')

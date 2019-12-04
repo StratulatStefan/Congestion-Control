@@ -15,8 +15,6 @@ print('Incepem bucla de receptie..')
 time.sleep(2)
 while True:
     data, addr = sock.recvfrom(buffer_size)
-
-
     decoded_data = SegmentDecode(data)
     if decoded_data['tip'] == 1:
         print('A fost generat pachetul de start..')
@@ -26,6 +24,10 @@ while True:
         time.sleep(1)
         file_write = open(file_name,'wb')
         print('Fisierul a fost creat cu succes..')
+    elif decoded_data['tip'] == 2:
+        print('A fost receptionat un pachet de date...')
+        file_write.write(decoded_data['data'])
+        print('Fisierul a fost modificat')
     elif decoded_data['tip'] == 3:
         time.sleep(2)
         print('\n\nReceptia a luat sfarsit deoarece a fost transmit pachetul final...')
