@@ -17,7 +17,7 @@ def encode_start(segment_data):
     incrementAck()
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x01'
-    segment_data_len = len(segment_data)  # atentie la caracterele speciale :  de ex 10 = CRLF
+    segment_data_len = len(segment_data)
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
     segment = segment_number + segment_type + segment_len
     for ch in segment_data:
@@ -46,7 +46,6 @@ def encode_end(segment_data):
     segment_type = b'\x03'
     segment_data_len = len(segment_data)
     segment_data = segment_data + b'\x00'*(DEFAULT_SIZE - segment_data_len)
-    segment_data_len = DEFAULT_SIZE
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
     segment = segment_number + segment_type + segment_len + segment_data
     return segment
@@ -72,6 +71,7 @@ def bytes_from_file(filename, chunk_size=DEFAULT_SIZE):
     with open(filename, "rb") as f:
         while True:
             chunk = f.read(chunk_size)
+            print(chunk)
             if chunk:
                 yield chunk
             else:

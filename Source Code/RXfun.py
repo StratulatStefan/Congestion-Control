@@ -1,13 +1,13 @@
 DEFAULT_SIZE = 512
 ack = 0
 tip = 0
-len = 0
+length = 0
 data = 0
 
 def SegmentDecode(segment):
     global ack
     global tip
-    global len
+    global length
     global data
 
     arr        = bytearray(segment)
@@ -17,10 +17,10 @@ def SegmentDecode(segment):
 
     ack  = int.from_bytes(ack_binary,byteorder='big',signed=False)
     tip  = int.from_bytes(tip_binary,byteorder='big',signed=False)
-    len  = int.from_bytes(len_binary,byteorder='big',signed=False)
-    data = bytearray([arr[i] for i in range(7,7 + len) if arr[i] != ord('0')])
+    length  = int.from_bytes(len_binary,byteorder='big',signed=False)
+    data = bytearray([arr[i] for i in range(7,7 + length) if arr[i] != b'\x00'])
 
-    return {'ack' : ack, 'tip' : tip, 'len' : len,'data' : data}
+    return {'ack' : ack, 'tip' : tip, 'len' : length,'data' : data}
 
 
 def DataFieldDecode(data,length):
@@ -31,5 +31,5 @@ def DataFieldDecode(data,length):
 
 
 def FileNameDecode(filename,length):
-    return 'output_' + DataFieldDecode(filename,length)
+    return "output//" + DataFieldDecode(filename,length)[len('input//'):]
 
