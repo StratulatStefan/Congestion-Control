@@ -1,0 +1,6 @@
+in TX scrierea si citirea asincrona?
+	cele 2 procese lucreaza asupra unor date comune segments_in_pipe, cwnd
+	
+timer?
+timer pentru fiecare pachet din segment?
+timerul poate genera intrerupere?

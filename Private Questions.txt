@@ -1,0 +1,2 @@
+RXfun: ce face data field decode? pentru verificare text?
+3 pachete cu acelasi ack = depasire timer?
