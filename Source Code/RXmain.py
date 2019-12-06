@@ -10,7 +10,8 @@ buffer_size = 1024  # pachetul va contine 512B
 
 sock.bind(address_port)
 
-sock.setsockopt(socket.SOL_SOCKET,socket.SO_RCVBUF,64000 * 32)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 64000 * 32)
+
 
 i = 0
 print('Incepem bucla de receptie..')
@@ -21,10 +22,10 @@ while True:
     if decoded_data['tip'] == 1:
         print('A fost generat pachetul de start..')
         time.sleep(2)
-        file_name = FileNameDecode(decoded_data['data'],decoded_data['len'])
-        print('Numele fisierului : ',file_name)
+        file_name = FileNameDecode(decoded_data['data'], decoded_data['len'])
+        print('Numele fisierului : ', file_name)
         time.sleep(1)
-        file_write = open(file_name,'wb')
+        file_write = open(file_name, 'wb')
         print('Fisierul a fost creat cu succes..')
     elif decoded_data['tip'] == 2:
         #print('A fost receptionat un pachet de date...')
@@ -34,7 +35,7 @@ while True:
         print('\n\nReceptia a luat sfarsit deoarece a fost transmit pachetul final...')
         file_write.write(decoded_data['data'])
         break
-    print(decoded_data['data'])
+    #print(decoded_data['data'])
 file_write.close()
 print('Gata..')
 
