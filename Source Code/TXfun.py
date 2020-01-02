@@ -1,7 +1,7 @@
 import threading
 import time
 from threading import Lock
-
+from RXfun import SegmentDecode
 
 DEFAULT_SIZE = 512
 TIME_TO_WAIT = 2
@@ -10,6 +10,9 @@ cwnd = 1
 threshold = 30
 timers_queue = []
 lock = Lock()
+pack_ack_to_retransmit = 0
+attention = False
+segments_in_pipe = 0
 
 def DataFieldDecode(data,length):
     date = ''
@@ -22,7 +25,7 @@ def increment_ack():
     global ack
     ack = ack + 1
 
-# impachetarea primului segment care va contine numele si extensia
+
 def encode_start(segment_data):
     increment_ack()
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
@@ -35,7 +38,7 @@ def encode_start(segment_data):
     return segment
 
 
-# impachetarea unui segment din interiorul fisierului
+
 def encode_data(segment_data):
     increment_ack()
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
@@ -48,7 +51,7 @@ def encode_data(segment_data):
     return segment
 
 
-# impachetarea ulitmului segment
+
 # in campul de segment_code, al doilea octet va fi lungimea caracterelor utile
 def encode_end(segment_data):
     increment_ack()
@@ -73,7 +76,7 @@ segment_type = {
 
 
 def encode(tip, data):
-    return segment_type.get(tip, encode_error)(data)  # un fel de switch
+    return segment_type.get(tip, encode_error)(data)
 
 
 #citirea fisier ca pachete de octeti
@@ -81,7 +84,6 @@ def bytes_from_file(filename, chunk_size=DEFAULT_SIZE):
     with open(filename, "rb") as f:
         while True:
             chunk = f.read(chunk_size)
-            # print(chunk)
             if chunk:
                 yield chunk
             else:
@@ -142,22 +144,24 @@ ack_type = {
 
 
 def update_cwnd(tip):
-    return segment_type.get(tip, encode_error)()  # un fel de switch
+    return segment_type.get(tip, encode_error)()
 
 
 def TX_read_ack(sock):
     global timers_queue
     global segments_in_pipe
     global lock
+    global pack_ack_to_retransmit
+    global attention
 
-    last_ack_received = 2
+    last_ack_received = 2 # ack 1 este pentru pachetul de start
     number_ack_duplicate = 0
-
     while True:
-
-        data, addr = sock.recvfrom(DEFAULT_SIZE)
-        ack_received = int.from_bytes(data, byteorder='big', signed=False)      # ack este fix data
+        data, addr = sock.recvfrom(512)
+        print('A fost receptionat ack = {}...'.format(data))
+        ack_received = int.from_bytes(data, byteorder='big', signed=False)   # ack este fix data
         if ack_received != last_ack_received:  # am primit un ack bun
+            print('--Ack primit este corect...')
             lock.acquire()
             timer = timers_queue.pop(0)
             lock.relase()
@@ -171,24 +175,34 @@ def TX_read_ack(sock):
             update_good_cwnd()
 
         else:   # am primit un ack mai mic sau egal specific unui pachet al carui ack deja l-am primit
+            print('--Ack primit este duplicat...')
             number_ack_duplicate = number_ack_duplicate + 1
+            attention = True
             if 3 == number_ack_duplicate:
+                print('--- 3 ack duplicate!!!')
+                pack_ack_to_retransmit = ack_received
                 update_duplicate_cwnd()
                 number_ack_duplicate = 0
+
 
 
 def tahoe_congestion_control(sock, address_port, file_name_to_send):
     global timers_queue
     global segments_in_pipe
     global lock
+    global pack_ack_to_retransmit
+    global attention
 
-    thread1 = threading.Thread(target=TX_read_ack, args=sock)   # creez thread pentru citire
+    segments_buffer = {} # buffer de 20 de segmente, folosit pt retransmitere
+    thread1 = threading.Thread(target=TX_read_ack, args=(sock,))   # creez thread pentru citire
+    thread1.daemon = True
     thread1.start()
-
+    time.sleep(2)
     for segment in encode_bytes(file_name_to_send):
         # daca pipe-ul e plin
-        while segments_in_pipe >= cwnd:
-            time.sleep(0.5)
+        #while segments_in_pipe >= cwnd:
+         #   print('Pipe plin..')
+         #   time.sleep(0.5)
             #asteapta un ack
         # else
         #   increamenteaza contor si trimite
@@ -197,11 +211,26 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
         segments_in_pipe = segments_in_pipe + 1
         lock.release()
 
-        sock.sendto(segment, address_port)
+        if pack_ack_to_retransmit == 0:
+            seg_decoded = SegmentDecode(segment)
+            print('Trimitem urmatorul pachet cu ack = {}'.format(seg_decoded['ack']))
+            segments_buffer[seg_decoded['ack']] = segment
+            sock.sendto(segment, address_port)
+            time.sleep(0.025)
+        else:
+            print('Retransmitem un pachet...')
+            sock.sendto(segments_buffer[pack_ack_to_retransmit],address_port)
+            pack_ack_to_retransmit = 0
+            attention = False
+
         # start timer
         timer = threading.Timer(TIME_TO_WAIT, update_time_cwnd, args=None, kwargs=None)
 
         lock.acquire()
         timers_queue.append(timer)
         lock.release()
+
+        if attention == False and len(segments_buffer) == 20:
+            segments_buffer = {}
+
 

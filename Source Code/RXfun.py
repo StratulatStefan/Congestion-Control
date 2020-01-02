@@ -1,8 +1,12 @@
+import time
 DEFAULT_SIZE = 512
 ack = 0
 tip = 0
 length = 0
 data = 0
+order_buffer = []
+segments_buffer = [[0,0]] * 20
+firstdynamic = 0
 
 def SegmentDecode(segment):
     global ack
@@ -34,30 +38,75 @@ def FileNameDecode(filename, length):
     return "output//" + DataFieldDecode(filename, length)[len('input//'):]
 
 
+def SegmentsOrdering(segment):
+    global segments_buffer
+    global flag
+    global firstdynamic
+    global order_buffer
+
+
+    ack = int(segment['ack'])
+    data = segment['data']
+    if not order_buffer:
+        print('gol')
+        order_buffer.append([ack,data])
+    else:
+        if ack == order_buffer[-1][0] + 1:
+            order_buffer.append([ack,data])
+            segments_buffer[segments_buffer[-1][0]-1] = [ack,data]
+        elif firstdynamic == 0:
+            segments_buffer = [[0,0]] * (ack - order_buffer[-1][0] - 1)
+            segments_buffer.insert(0,order_buffer[-1])
+            segments_buffer.insert(ack-order_buffer[-1][0],[ack,data])
+            firstdynamic = 1
+        else:
+            if ack > segments_buffer[0][0] and ack < segments_buffer[-1][0]:
+                segments_buffer[ack-segments_buffer[-1][0]-1] = [ack,data]
+            elif ack > segments_buffer[-1][0]:
+                for i in range(ack - segments_buffer[-1][0] - 1):
+                    segments_buffer.append([0,0])
+                segments_buffer.append([ack,data])
+        buffer = []
+        for value in segments_buffer:
+            if value != [0,0]:
+                buffer.append(value)
+            else:
+                break
+        if len(buffer) > 1:
+            for element in buffer:
+                if element not in order_buffer:
+                    order_buffer.append(element)
+                segments_buffer.remove(element)
+
 def tahoe_congestion_control(sock, address_port, buffer_size):
     global lock
+    global flag
+    global firstdynamic
+    global order_buffer
+    global segments_buffer
+
     ack_waited = 1
     while True:
         data, addr = sock.recvfrom(buffer_size)
+        print('A fost receptionat..{}'.format(data))
         decoded_data = SegmentDecode(data)
         if decoded_data['tip'] == 1:
-            print('A fost generat pachetul de start..')
-
+            print('A fost receptionat pachetul de start..')
             file_name = FileNameDecode(decoded_data['data'], decoded_data['len'])
-            print('Numele fisierului : ', file_name)
-
             file_write = open(file_name, 'wb')
-            print('Fisierul a fost creat cu succes..')
+            print('Fisierul a fost creat cu succes..\n\n')
             ack_waited = decoded_data['ack']   #Consider ca primul pachet venit e sigur bun
         elif decoded_data['tip'] == 2:
-            # print('A fost receptionat un pachet de date...')
-            file_write.write(decoded_data['data'])
-            # print('Fisierul a fost modificat')
+            SegmentsOrdering(decoded_data)
+            print('A fost receptionat un pachet de date {}...'.format(decoded_data['ack']))
+            if len(order_buffer) == 20:
+                for element in order_buffer:
+                    file_write.write(element[1])
+                order_buffer = []
         elif decoded_data['tip'] == 3:
-            print('\n\nReceptia a luat sfarsit deoarece a fost transmit pachetul final...')
+            print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
             file_write.write(decoded_data['data'])
             break
-
 
         ack_received = decoded_data['ack']
 
@@ -67,5 +116,8 @@ def tahoe_congestion_control(sock, address_port, buffer_size):
         else:
             ack_transmitted = ack_waited
         segment_number = ack_transmitted.to_bytes(4, byteorder='big', signed=False)
-        sock.sendto(segment_number, address_port)
+        time.sleep(3)
+        sock.sendto(segment_number,address_port)
+        print('A fost trimis {}'.format(segment_number))
 
+    file_write.close()
