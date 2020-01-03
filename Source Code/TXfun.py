@@ -157,7 +157,8 @@ def TX_read_ack(sock):
     last_ack_received = 2 # ack 1 este pentru pachetul de start
     number_ack_duplicate = 0
     while True:
-        data, addr = sock.recvfrom(512)
+        print('am ajuns aici')
+        data, addr = sock.recvfrom(DEFAULT_SIZE)
         print('A fost receptionat ack = {}...'.format(data))
         ack_received = int.from_bytes(data, byteorder='big', signed=False)   # ack este fix data
         if ack_received != last_ack_received:  # am primit un ack bun
@@ -194,10 +195,12 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
     global attention
 
     segments_buffer = {} # buffer de 20 de segmente, folosit pt retransmitere
-    thread1 = threading.Thread(target=TX_read_ack, args=(sock,))   # creez thread pentru citire
-    thread1.daemon = True
-    thread1.start()
-    time.sleep(2)
+    #thread1 = threading.Thread(target=TX_read_ack, args=(sock,))   # creez thread pentru citire
+    #thread1.run()
+    print('am ajuns aici')
+    data, addr = sock.recvfrom(DEFAULT_SIZE)
+    print('A fost receptionat ack = {}...'.format(data))
+    time.sleep(1)
     for segment in encode_bytes(file_name_to_send):
         # daca pipe-ul e plin
         #while segments_in_pipe >= cwnd:

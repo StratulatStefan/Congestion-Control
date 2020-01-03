@@ -116,7 +116,7 @@ def tahoe_congestion_control(sock, address_port, buffer_size):
         else:
             ack_transmitted = ack_waited
         segment_number = ack_transmitted.to_bytes(4, byteorder='big', signed=False)
-        time.sleep(3)
+        #time.sleep(3)
         sock.sendto(segment_number,address_port)
         print('A fost trimis {}'.format(segment_number))
 
