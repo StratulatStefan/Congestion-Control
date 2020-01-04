@@ -1,5 +1,6 @@
 import threading
 import time
+import os
 from threading import Lock
 from RXfun import SegmentDecode
 
@@ -13,6 +14,12 @@ lock = Lock()
 pack_ack_to_retransmit = 0
 attention = False
 segments_in_pipe = 0
+number_of_chunks = 0
+
+def ConsoleAppendText(window,text):
+    window.CONSOLE.append(text + "\n")
+    window.CONSOLE.repaint()
+
 
 def DataFieldDecode(data,length):
     date = ''
@@ -187,20 +194,27 @@ def TX_read_ack(sock):
 
 
 
-def tahoe_congestion_control(sock, address_port, file_name_to_send):
+def tahoe_congestion_control(window,sock, address_port, file_name_to_send):
     global timers_queue
     global segments_in_pipe
     global lock
     global pack_ack_to_retransmit
     global attention
-
+    global number_of_chunks
     segments_buffer = {} # buffer de 20 de segmente, folosit pt retransmitere
-    #thread1 = threading.Thread(target=TX_read_ack, args=(sock,))   # creez thread pentru citire
-    #thread1.run()
+    '''
+    thread1 = threading.Thread(target=TX_read_ack, args=(sock,))   # creez thread pentru citire
+    thread1.run()
     print('am ajuns aici')
     data, addr = sock.recvfrom(DEFAULT_SIZE)
     print('A fost receptionat ack = {}...'.format(data))
     time.sleep(1)
+    '''
+    filesize = os.path.getsize(file_name_to_send)
+    ConsoleAppendText(window,'Filesize = {} Bytes'.format(filesize))
+    number_of_chunks = round(filesize/DEFAULT_SIZE)
+    ConsoleAppendText(window,'Number of chunks = {} '.format(number_of_chunks))
+
     for segment in encode_bytes(file_name_to_send):
         # daca pipe-ul e plin
         #while segments_in_pipe >= cwnd:
@@ -213,19 +227,19 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
         lock.acquire()
         segments_in_pipe = segments_in_pipe + 1
         lock.release()
-
+        seg_decoded = SegmentDecode(segment)
         if pack_ack_to_retransmit == 0:
-            seg_decoded = SegmentDecode(segment)
-            print('Trimitem urmatorul pachet cu ack = {}'.format(seg_decoded['ack']))
+            ConsoleAppendText(window,'Trimitem urmatorul pachet cu ack = {}'.format(seg_decoded['ack']))
             segments_buffer[seg_decoded['ack']] = segment
             sock.sendto(segment, address_port)
             time.sleep(0.025)
         else:
-            print('Retransmitem un pachet...')
+            ConsoleAppendText(window,'Retransmitem un pachet...')
             sock.sendto(segments_buffer[pack_ack_to_retransmit],address_port)
             pack_ack_to_retransmit = 0
             attention = False
-
+        window.Progress_Bar.setValue(int(seg_decoded['ack']/number_of_chunks * 100))
+        window.Progress_Bar.repaint()
         # start timer
         timer = threading.Timer(TIME_TO_WAIT, update_time_cwnd, args=None, kwargs=None)
 

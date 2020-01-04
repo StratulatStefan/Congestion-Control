@@ -1,4 +1,5 @@
 import time
+
 DEFAULT_SIZE = 512
 ack = 0
 tip = 0
@@ -7,6 +8,8 @@ data = 0
 order_buffer = []
 segments_buffer = [[0,0]] * 20
 firstdynamic = 0
+filepath = ""
+
 
 def SegmentDecode(segment):
     global ack
@@ -34,8 +37,11 @@ def DataFieldDecode(data, length):
     return date
 
 
-def FileNameDecode(filename, length):
-    return "output//" + DataFieldDecode(filename, length)[len('input//'):]
+def FileNameDecode(window,filename, length):
+    global filepath
+    filename = DataFieldDecode(filename,length)
+    filename = filename[filename.rfind("/")+1:]
+    return window.SELECTFILE_TEXT.toPlainText() + "//" + filename
 
 
 def SegmentsOrdering(segment):
@@ -48,7 +54,6 @@ def SegmentsOrdering(segment):
     ack = int(segment['ack'])
     data = segment['data']
     if not order_buffer:
-        print('gol')
         order_buffer.append([ack,data])
     else:
         if ack == order_buffer[-1][0] + 1:
@@ -77,8 +82,11 @@ def SegmentsOrdering(segment):
                 if element not in order_buffer:
                     order_buffer.append(element)
                 segments_buffer.remove(element)
+def ConsoleAppendText(window,text):
+    window.CONSOLE.append(text + "\n")
+    window.CONSOLE.repaint()
 
-def tahoe_congestion_control(sock, address_port, buffer_size):
+def tahoe_congestion_control(window,sock, address_port, buffer_size):
     global lock
     global flag
     global firstdynamic
@@ -88,36 +96,38 @@ def tahoe_congestion_control(sock, address_port, buffer_size):
     ack_waited = 1
     while True:
         data, addr = sock.recvfrom(buffer_size)
-        print('A fost receptionat..{}'.format(data))
         decoded_data = SegmentDecode(data)
         if decoded_data['tip'] == 1:
-            print('A fost receptionat pachetul de start..')
-            file_name = FileNameDecode(decoded_data['data'], decoded_data['len'])
+            ConsoleAppendText(window,'A fost receptionat pachetul de start..')
+            file_name = FileNameDecode(window,decoded_data['data'], decoded_data['len'])
             file_write = open(file_name, 'wb')
-            print('Fisierul a fost creat cu succes..\n\n')
+            ConsoleAppendText(window,'Fisierul a fost creat cu succes..\n\n')
             ack_waited = decoded_data['ack']   #Consider ca primul pachet venit e sigur bun
         elif decoded_data['tip'] == 2:
             SegmentsOrdering(decoded_data)
-            print('A fost receptionat un pachet de date {}...'.format(decoded_data['ack']))
+            ConsoleAppendText(window,'A fost receptionat un pachet de date {}...'.format(decoded_data['ack']))
             if len(order_buffer) == 20:
                 for element in order_buffer:
                     file_write.write(element[1])
                 order_buffer = []
         elif decoded_data['tip'] == 3:
-            print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
+            for element in order_buffer:
+                file_write.write(element[1])
+            ConsoleAppendText(window,'\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
             file_write.write(decoded_data['data'])
             break
 
-        ack_received = decoded_data['ack']
-
+        #ack_received = decoded_data['ack']
+        '''
         if ack_received == ack_waited:
             ack_transmitted = ack_received + 1
             ack_waited = ack_transmitted
         else:
             ack_transmitted = ack_waited
         segment_number = ack_transmitted.to_bytes(4, byteorder='big', signed=False)
-        #time.sleep(3)
+        time.sleep(3)
         sock.sendto(segment_number,address_port)
         print('A fost trimis {}'.format(segment_number))
-
+        '''
+    time.sleep(2)
     file_write.close()
