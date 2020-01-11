@@ -15,6 +15,8 @@ attention = False
 segments_in_pipe = 0
 sending_done = False
 last_ack_of_file = 0
+last_segment_transmitted = 2
+last_ack_received = 1
 
 def packet_received():
     global cwnd
@@ -51,17 +53,17 @@ def TX_read_ack(sock):
     global last_ack_of_file
     global pack_ack_to_retransmit
     global attention
-
+    global last_ack_received
 
     print("TX_read_ack thread started")
-    last_ack_received = 2 # ack 2 este pentru pachetul de start
-    number_ack_duplicate = 0
 
+    number_ack_duplicate = 0
+    last_ack_received += 1  # ack = 2 este pentru pachetul de start (are segment number = 1)
     # mai trebuie sa merg niste iteratii cand sending_done, abia am trimis pachetul end, nu am primit ack de la el
-    while sending_done == False or last_ack_of_file == (last_ack_received - 1):
+    while sending_done == False or (last_ack_received != last_ack_of_file + 1):
         data, addr = sock.recvfrom(DEFAULT_SIZE)  # functie blocanta
         ack_received = int.from_bytes(data, byteorder='big', signed=False)   # segment_number este fix data
-        print('last ack =  {}...'.format(last_ack_received))
+        print('last ack received=  {}...'.format(last_ack_received))
         print('A fost receptionat segment_number = {}... \n'.format(ack_received))
 
         if ack_received == last_ack_received + 1:  # am primit un ack bun
@@ -87,6 +89,8 @@ def TX_read_ack(sock):
                 pack_ack_to_retransmit = ack_received
                 packet_dropped()
                 number_ack_duplicate = 0
+    sending_done = False
+    print('TX_RX_done')
 
 
 
@@ -97,7 +101,7 @@ def TX_send(sock, address_port, file_name_to_send):
     global sending_done
     global last_ack_of_file
 
-    print(f"TX_send thread started sending = {sending_done}")
+    print(f"TX_send thread started sending_done = {sending_done}")
     while sending_done == False:
         for segment in encode_bytes(file_name_to_send):
             # daca pipe-ul e plin
@@ -111,6 +115,7 @@ def TX_send(sock, address_port, file_name_to_send):
             if tip == 3:
                 sending_done = True
                 last_ack_of_file = segment_decode(segment)['ack']
+                print(f'last_ack_of_file = {last_ack_of_file }\n')
 
             lock.acquire()
             segments_in_pipe = segments_in_pipe + 1
@@ -126,7 +131,7 @@ def TX_send(sock, address_port, file_name_to_send):
 
             sock.sendto(segment, address_port)
             segment_number = segment_decode(segment)['ack']
-            print(f'Am trimis pachetul cu ack = {segment_number} \n')
+            print(f'Am trimis pachetul cu segment_number = {segment_number} \n')
 
 
             # adaug timerul in coada de timere
@@ -137,27 +142,30 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
     print('Trimitem pachetul de start...')
     time.sleep(0.2)
     segment = encode('START', file_name_to_send)
+    ack_binary = bytearray([segment[i] for i in range(4)])
+    segment_number_sent = int.from_bytes(ack_binary, byteorder='big', signed=False)
     sock.sendto(segment, address_port)
     print('A fost trimis pachetul de start, astept confirmarea primirii...')
     data, addr = sock.recvfrom(BUFFER_SIZE)
     print('A fost receptionat... {}'.format(data))
     ack_binary = bytearray([data[i] for i in range(4)])
-    segment_number = int.from_bytes(ack_binary, byteorder='big', signed=False)
-    if segment_number == 2:
+    segment_number_received = int.from_bytes(ack_binary, byteorder='big', signed=False)
+    if segment_number_received == (segment_number_sent + 1):
         print('Am primit ack pentru pachetul de START')
+        # s-a creat fisierul la destinatie, pot incepe popularea acestuia cu informatii
+
+        # creez thread pentru primirea confirmarilor pachetelor
+        TX_RX_thread = threading.Thread(target=TX_read_ack, args=(sock,))
+        TX_RX_thread.start()
+
+        # creez thread pentru trimiterea pachetelor
+        TX_TX_thread = threading.Thread(target=TX_send, args=(sock, address_port, file_name_to_send))
+        TX_TX_thread.start()
+
+        # astept ca cele 2 threaduri sa-si fi terminat executia
+        TX_RX_thread.join()
+        TX_TX_thread.join()
     else:
         print('Am primit ack gresit pentru pachetul de START')
 
-    # s-a creat fisierul la destinatie, pot incepe popularea acestuia cu informatii
 
-    # creez thread pentru primirea confirmarilor pachetelor
-    TX_RX_thread = threading.Thread(target=TX_read_ack, args=(sock, ))
-    TX_RX_thread.start()
-
-    # creez thread pentru trimiterea pachetelor
-    TX_TX_thread = threading.Thread(target=TX_send, args=(sock, address_port, file_name_to_send))
-    TX_TX_thread.start()
-
-    #astept ca cele 2 threaduri sa-si fi terminat executia
-    TX_RX_thread.join()
-    TX_TX_thread.join()
