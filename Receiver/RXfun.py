@@ -1,4 +1,5 @@
 import time
+import random
 
 DEFAULT_SIZE = 512
 ack = 0
@@ -41,9 +42,14 @@ def FileNameDecode(filename, length):
     return "output//" + DataFieldDecode(filename, length)[len('input//'):]
 
 
+def drop_packet(loss_probability):
+    x = random.randrange(100)
+    if x < loss_probability:
+        return True
+    else:
+        return False
 
-
-def tahoe_congestion_control(sock, address_port, buffer_size):
+def tahoe_congestion_control(sock, address_port, buffer_size, loss_probability):
     global lock
     global flag
     global firstdynamic
@@ -53,37 +59,43 @@ def tahoe_congestion_control(sock, address_port, buffer_size):
 
     ack_waited = 1
     while True:
+
+
         data, addr = sock.recvfrom(buffer_size)
-        print('A fost receptionat..{}'.format(data))
-        decoded_data = segment_decode(data)
-        if decoded_data['tip'] == 1:
-            print('A fost receptionat pachetul de start..')
-            file_name = FileNameDecode(decoded_data['data'], decoded_data['len'])
-            file_write = open(file_name, 'wb')
-            print('Fisierul a fost creat cu succes..\n\n')
-        elif decoded_data['tip'] == 2:
-            print('A fost receptionat un pachet de date {}...'.format(decoded_data['ack']))
-            file_write.write(decoded_data['data'])
-        elif decoded_data['tip'] == 3:
-            print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
-            file_write.write(decoded_data['data'])
-            file_write.close()
-
-
-        ack_received = decoded_data['ack']
-
-        if ack_received == ack_waited:
-            ack_transmitted = ack_received + 1
-            ack_waited = ack_transmitted
+        if drop_packet(loss_probability):
+            print('A fost pierdut pachetul ... {}'.format(data))
         else:
-            ack_transmitted = ack_waited
-        segment_number = ack_transmitted.to_bytes(4, byteorder='big', signed=False)
+            print('A fost receptionat ... {}'.format(data))
+            decoded_data = segment_decode(data)
+            if decoded_data['tip'] == 1:
+                print('A fost receptionat pachetul de start..')
+                file_name = FileNameDecode(decoded_data['data'], decoded_data['len'])
+                file_write = open(file_name, 'wb')
+                print('Fisierul a fost creat cu succes..\n\n')
+            elif decoded_data['tip'] == 2:
+                print('A fost receptionat un pachet de date {}...'.format(decoded_data['ack']))
+                file_write.write(decoded_data['data'])
+            elif decoded_data['tip'] == 3:
+                print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
+                file_write.write(decoded_data['data'])
+                file_write.close()
 
 
-        sock.sendto(segment_number, address_port)
-        print('A fost trimis {}'.format(segment_number))
-       # time.sleep(0.2)
+            ack_received = decoded_data['ack']
 
+            if ack_received == ack_waited:
+                ack_transmitted = ack_received + 1
+                ack_waited = ack_transmitted
+            else:
+                ack_transmitted = ack_waited
+            segment_number = ack_transmitted.to_bytes(4, byteorder='big', signed=False)
+
+
+            sock.sendto(segment_number, address_port)
+            print('A fost trimis {}'.format(segment_number))
+            # time.sleep(0.2)
+
+        # in while, end of if
 
 
 

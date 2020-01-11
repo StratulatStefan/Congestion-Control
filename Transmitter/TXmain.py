@@ -27,17 +27,22 @@ file_name_to_send = "input//image.jpg"                #merge
 print('Incepem bucla de transmisie...')
 time.sleep(0.5)
 
+
 tahoe_congestion_control(sock, address_port, file_name_to_send)
-
-
 print('Am terminat de transmis primul fisier\n\n\n')
 time.sleep(2)
 
 file_name_to_send = "input//verisign.bmp"             #merge
 tahoe_congestion_control(sock, address_port, file_name_to_send)
-print('Pachetele de date au fost trimise...')
+print('Am terminat de transmis al doilea fisier\n\n\n')
+time.sleep(2)
 
 
+#file_name_to_send = "input//bohemian-rapsody.mp3"     #merge (are 9MB)
+#tahoe_congestion_control(sock, address_port, file_name_to_send)
+#print('Am terminat de transmis al treilea fisier\n\n\n')
 
 time.sleep(1)
+
+
 print('\nSfarsitul transmisiei...')

@@ -7,7 +7,7 @@ from TX_fun_encode import *
 BUFFER_SIZE = DEFAULT_SIZE + 8  # 4 segment_number, 1 tip, 2 lungime
 TIME_TO_WAIT = 2  # Round Trip Time
 cwnd = 2  # congestion window pleaca de la 2, pentru ca pentru cwnd 1 am functia recvfrom care e blocanta
-sstresh = 30  # slow strat threshhold
+sstresh = 30  # slow start threshhold
 timers_queue = []
 lock = Lock()
 pack_ack_to_retransmit = 0
@@ -41,6 +41,7 @@ def packet_dropped():
     cwnd = 1
     lock.release()
 
+    # ACTIVEAZA FLAG pentru retransmisie
     # RESTRANSMITE PACHETE INCEPAND CU last_ack_received
 
 
@@ -66,6 +67,10 @@ def TX_read_ack(sock):
         print('last ack received=  {}...'.format(last_ack_received))
         print('A fost receptionat segment_number = {}... \n'.format(ack_received))
 
+        lock.acquire()
+        segments_in_pipe = segments_in_pipe - 1
+        lock.release()
+
         if ack_received == last_ack_received + 1:  # am primit un ack bun
             last_ack_received += 1
             lock.acquire()
@@ -74,13 +79,9 @@ def TX_read_ack(sock):
 
             timer.cancel()
 
-            lock.acquire()
-            segments_in_pipe = segments_in_pipe - 1
-            lock.release()
-
             packet_received()
 
-        else:   # am primit un ack mai mic sau egal specific unui pachet al carui ack deja l-am primit
+        else:   # am primit acelasi ack
             print('--Ack primit este duplicat...')
             number_ack_duplicate = number_ack_duplicate + 1
             attention = True
@@ -105,6 +106,9 @@ def TX_send(sock, address_port, file_name_to_send):
     while sending_done == False:
         for segment in encode_bytes(file_name_to_send):
             # daca pipe-ul e plin
+
+            # de implementat: porneste un TIMER sa nu astepte la infinit
+
             while segments_in_pipe >= cwnd:
                 time.sleep(0.5)
                 #asteapta un ack
@@ -144,10 +148,13 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
     segment = encode('START', file_name_to_send)
     ack_binary = bytearray([segment[i] for i in range(4)])
     segment_number_sent = int.from_bytes(ack_binary, byteorder='big', signed=False)
+
     sock.sendto(segment, address_port)
     print('A fost trimis pachetul de start, astept confirmarea primirii...')
+
     data, addr = sock.recvfrom(BUFFER_SIZE)
     print('A fost receptionat... {}'.format(data))
+
     ack_binary = bytearray([data[i] for i in range(4)])
     segment_number_received = int.from_bytes(ack_binary, byteorder='big', signed=False)
     if segment_number_received == (segment_number_sent + 1):
