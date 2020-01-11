@@ -3,6 +3,7 @@ import time
 from threading import Lock
 from TX_fun_encode import *
 
+
 BUFFER_SIZE = DEFAULT_SIZE + 8  # 4 segment_number, 1 tip, 2 lungime
 TIME_TO_WAIT = 2  # Round Trip Time
 cwnd = 2  # congestion window pleaca de la 2, pentru ca pentru cwnd 1 am functia recvfrom care e blocanta
@@ -12,7 +13,8 @@ lock = Lock()
 pack_ack_to_retransmit = 0
 attention = False
 segments_in_pipe = 0
-
+sending_done = False
+last_ack_of_file = 0
 
 def packet_received():
     global cwnd
@@ -45,17 +47,22 @@ def TX_read_ack(sock):
     global timers_queue
     global segments_in_pipe
     global lock
+    global sending_done
+    global last_ack_of_file
     global pack_ack_to_retransmit
     global attention
+
 
     print("TX_read_ack thread started")
     last_ack_received = 2 # ack 2 este pentru pachetul de start
     number_ack_duplicate = 0
-    while True:
+
+    # mai trebuie sa merg niste iteratii cand sending_done, abia am trimis pachetul end, nu am primit ack de la el
+    while sending_done == False or last_ack_of_file == (last_ack_received - 1):
         data, addr = sock.recvfrom(DEFAULT_SIZE)  # functie blocanta
         ack_received = int.from_bytes(data, byteorder='big', signed=False)   # segment_number este fix data
         print('last ack =  {}...'.format(last_ack_received))
-        print('A fost receptionat segment_number = {}...'.format(ack_received))
+        print('A fost receptionat segment_number = {}... \n'.format(ack_received))
 
         if ack_received == last_ack_received + 1:  # am primit un ack bun
             last_ack_received += 1
@@ -87,10 +94,11 @@ def TX_send(sock, address_port, file_name_to_send):
     global timers_queue
     global segments_in_pipe
     global lock
+    global sending_done
+    global last_ack_of_file
 
-    print("TX_send thread started")
-    gata = False
-    while gata == False:
+    print(f"TX_send thread started sending = {sending_done}")
+    while sending_done == False:
         for segment in encode_bytes(file_name_to_send):
             # daca pipe-ul e plin
             while segments_in_pipe >= cwnd:
@@ -98,6 +106,11 @@ def TX_send(sock, address_port, file_name_to_send):
                 #asteapta un ack
             # else
             #   increamenteaza contor si trimite
+
+            tip = segment_decode(segment)['tip']
+            if tip == 3:
+                sending_done = True
+                last_ack_of_file = segment_decode(segment)['ack']
 
             lock.acquire()
             segments_in_pipe = segments_in_pipe + 1
@@ -131,9 +144,9 @@ def tahoe_congestion_control(sock, address_port, file_name_to_send):
     ack_binary = bytearray([data[i] for i in range(4)])
     segment_number = int.from_bytes(ack_binary, byteorder='big', signed=False)
     if segment_number == 2:
-        print('Am primit ack pentru pachetul de start')
+        print('Am primit ack pentru pachetul de START')
     else:
-        print('Am primit ack gresit')
+        print('Am primit ack gresit pentru pachetul de START')
 
     # s-a creat fisierul la destinatie, pot incepe popularea acestuia cu informatii
 

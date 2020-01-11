@@ -1,6 +1,6 @@
 DEFAULT_SIZE = 512
 ack = 0     # primul segment_number trimis este 1
-
+end_transmission = False
 
 def segment_decode(segment):
     global ack
@@ -61,6 +61,7 @@ def encode_data(segment_data):
 
 # in campul de segment_code, al doilea octet va fi lungimea caracterelor utile
 def encode_end(segment_data):
+    global end_transmission
     increment_ack()
     segment_number = ack.to_bytes(4, byteorder='big', signed=False)
     segment_type = b'\x03'
@@ -68,6 +69,7 @@ def encode_end(segment_data):
     segment_data = segment_data + b'\x00'*(DEFAULT_SIZE - segment_data_len)
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
     segment = segment_number + segment_type + segment_len + segment_data
+  #  end_transmission = True
     return segment
 
 
