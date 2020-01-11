@@ -68,7 +68,7 @@ def tahoe_congestion_control(sock, address_port, buffer_size):
             print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
             file_write.write(decoded_data['data'])
             file_write.close()
-            break
+
 
         ack_received = decoded_data['ack']
 
