@@ -41,6 +41,9 @@ def packet_dropped():
     cwnd = 1
     lock.release()
 
+
+    flag_retrasnmit = True
+    threading(retransmit)
     # ACTIVEAZA FLAG pentru retransmisie
     # RESTRANSMITE PACHETE INCEPAND CU last_ack_received
 
@@ -111,6 +114,8 @@ def TX_send(sock, address_port, file_name_to_send):
 
             while segments_in_pipe >= cwnd:
                 time.sleep(0.5)
+            while flag_retransmit == true
+                time.sleep(0.5)
                 #asteapta un ack
             # else
             #   increamenteaza contor si trimite
@@ -128,6 +133,8 @@ def TX_send(sock, address_port, file_name_to_send):
             # creez si pornesc timer
             timer = threading.Timer(TIME_TO_WAIT, packet_dropped, args=None, kwargs=None)
             timer.start()
+
+
 
             lock.acquire()
             timers_queue.append(timer)

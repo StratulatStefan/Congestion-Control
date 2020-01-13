@@ -56,9 +56,9 @@ def tahoe_congestion_control(sock, address_port, buffer_size, loss_probability):
     global order_buffer
     global segments_buffer
 
-
+    stay_in_loop = True
     ack_waited = 1
-    while True:
+    while stay_in_loop:
 
 
         data, addr = sock.recvfrom(buffer_size)
@@ -79,11 +79,13 @@ def tahoe_congestion_control(sock, address_port, buffer_size, loss_probability):
                 print('\n\nA fost receptionat pachetul final {} ...'.format(decoded_data['ack']))
                 file_write.write(decoded_data['data'])
                 file_write.close()
-
+            elif decoded_data['tip'] == 4:
+                stay_in_loop = False
 
             ack_received = decoded_data['ack']
 
             if ack_received == ack_waited:
+
                 ack_transmitted = ack_received + 1
                 ack_waited = ack_transmitted
             else:
@@ -126,7 +128,7 @@ def SegmentsOrdering(segment):
             elif ack > segments_buffer[-1][0]:
                 for i in range(ack - segments_buffer[-1][0] - 1):
                     segments_buffer.append([0,0])
-                segments_buffer.append([ack,data])
+                segments_buffer.append([ack, data])
         buffer = []
         for value in segments_buffer:
             if value != [0,0]:
