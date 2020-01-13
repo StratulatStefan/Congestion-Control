@@ -69,7 +69,7 @@ def encode_end(segment_data):
     segment_data = segment_data + b'\x00'*(DEFAULT_SIZE - segment_data_len)
     segment_len = segment_data_len.to_bytes(2, byteorder='big', signed=False)
     segment = segment_number + segment_type + segment_len + segment_data
-  #  end_transmission = True
+    #  end_transmission = True
     return segment
 
 
