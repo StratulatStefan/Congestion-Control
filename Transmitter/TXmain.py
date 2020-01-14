@@ -13,8 +13,8 @@ sock.bind(address_port_RX)
 # file_name_to_send = "input//AiMultiChannel.prj"       #merge
 # file_name_to_send = "input//ghid.pdf"                 #merge
 # file_name_to_send = "input//extra.png"                #merge
-#file_name_to_send = "input//image.jpg"                #merge
-file_name_to_send = "input//archive.zip"              #merge
+file_name_to_send = "input//image.jpg"                #merge
+#file_name_to_send = "input//archive.zip"              #merge
 # file_name_to_send = "input//extras.png"               #merge
 # file_name_to_send = "input//icon.png"                 #merge
 # file_name_to_send = "input//LAND3.bmp"                #merge
@@ -24,7 +24,7 @@ file_name_to_send = "input//archive.zip"              #merge
 #file_name_to_send = "input//giphy.gif"                 #merge
 
 
-print('Incepem bucla de transmisie...')
+print('\nIncepem bucla de transmisie...\n')
 time.sleep(0.5)
 
 
@@ -38,9 +38,9 @@ print('Am terminat de transmis al doilea fisier\n\n\n')
 time.sleep(2)
 
 
-#file_name_to_send = "input//bohemian-rapsody.mp3"     #merge (are 9MB)
-#tahoe_congestion_control(sock, address_port, file_name_to_send)
-#print('Am terminat de transmis al treilea fisier\n\n\n')
+file_name_to_send = "input//bohemian-rapsody.mp3"     #merge (are 9MB)
+tahoe_congestion_control(sock, address_port, file_name_to_send)
+print('Am terminat de transmis al treilea fisier\n\n\n')
 
 time.sleep(1)
 
