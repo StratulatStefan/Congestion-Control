@@ -1,6 +1,0 @@
-de implementat al doilea fir de executie pentru TX read
-de implementat lock, unlock mutex pe variabilele accesate de TX Tahoe si TX read
-
-
-! in RX Tahoe consider ca pachetele ajung in ordine
-ar fi bine o lista care sa contine ultimele ack-uri primite
